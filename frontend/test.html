@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Socket.IO Test</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+
+        #messages {
+            border: 1px solid #ccc;
+            padding: 15px;
+            min-height: 150px;
+            margin-top: 20px;
+        }
+
+        .message {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Real-Time Chat Test</h2>
+
+    <label>Your User ID:</label>
+
+    <input
+        type="text"
+        id="sender"
+        placeholder="Enter your user ID"
+    >
+
+    <label>Receiver User ID:</label>
+
+    <input
+        type="text"
+        id="receiver"
+        placeholder="Enter receiver user ID"
+    >
+
+    <label>Message:</label>
+
+    <input
+        type="text"
+        id="message"
+        placeholder="Type your message"
+    >
+
+    <button onclick="joinChat()">
+        Join Chat
+    </button>
+
+    <button onclick="sendMessage()">
+        Send Message
+    </button>
+
+    <div id="messages"></div>
+
+
+    <!-- Socket.IO client -->
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+
+    <script>
+
+        const socket = io("http://localhost:5000");
+
+
+        // =====================================================
+        // SOCKET CONNECTION
+        // =====================================================
+
+        socket.on("connect", () => {
+
+            console.log("Connected to Socket.IO");
+
+        });
+
+
+        // =====================================================
+        // JOIN CHAT
+        // =====================================================
+
+        function joinChat() {
+
+            const sender = document.getElementById("sender").value;
+
+            if (!sender) {
+
+                alert("Please enter your User ID");
+
+                return;
+            }
+
+            socket.emit("join", sender);
+
+            console.log("Joined room:", sender);
+
+        }
+
+
+        // =====================================================
+        // SEND MESSAGE
+        // =====================================================
+
+        function sendMessage() {
+
+            const sender =
+                document.getElementById("sender").value;
+
+            const receiver =
+                document.getElementById("receiver").value;
+
+            const message =
+                document.getElementById("message").value;
+
+
+            if (!sender || !receiver || !message) {
+
+                alert("Please fill all fields");
+
+                return;
+            }
+
+
+            socket.emit("sendMessage", {
+
+                sender: sender,
+
+                receiver: receiver,
+
+                message: message
+
+            });
+
+
+            displayMessage(
+                "You: " + message
+            );
+
+
+            document.getElementById("message").value = "";
+
+        }
+
+
+        // =====================================================
+        // RECEIVE MESSAGE
+        // =====================================================
+
+        socket.on("receiveMessage", (data) => {
+
+            displayMessage(
+                "Received: " + data.message
+            );
+
+        });
+
+
+        // =====================================================
+        // DISPLAY MESSAGE
+        // =====================================================
+
+        function displayMessage(message) {
+
+            const messages =
+                document.getElementById("messages");
+
+
+            const div =
+                document.createElement("div");
+
+
+            div.className = "message";
+
+            div.textContent = message;
+
+
+            messages.appendChild(div);
+
+        }
+
+    </script>
+
+</body>
+
+</html>

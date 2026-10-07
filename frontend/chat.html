@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+<title>Real-Time Chat</title>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<style>
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f3f4f6;
+    }
+
+    .chat-container {
+        display: flex;
+        height: 100vh;
+    }
+
+    /* =========================================
+       USERS SIDEBAR
+    ========================================= */
+
+    .users-section {
+        width: 30%;
+        background: white;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .users-header {
+        padding: 20px;
+        background: #2563eb;
+        color: white;
+    }
+
+    .users-header h2 {
+        margin: 0 0 5px 0;
+    }
+
+    .users-header p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    #usersList {
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .user-item {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+    }
+
+    .user-item:hover {
+        background: #f3f4f6;
+    }
+
+    .user-item.active {
+        background: #dbeafe;
+    }
+
+    .user-name {
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .user-status {
+        margin-top: 5px;
+        font-size: 13px;
+    }
+
+    .online {
+        color: green;
+    }
+
+    .offline {
+        color: gray;
+    }
+
+    /* =========================================
+       CHAT SECTION
+    ========================================= */
+
+    .chat-section {
+        width: 70%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        background: white;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .chat-header h3 {
+        margin: 0;
+    }
+
+    #chatUserStatus {
+        font-size: 13px;
+        margin-top: 5px;
+        color: gray;
+    }
+
+    #typingIndicator {
+        font-size: 13px;
+        color: #2563eb;
+        margin-top: 5px;
+        min-height: 18px;
+    }
+
+    /* =========================================
+       MESSAGES
+    ========================================= */
+
+    #messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .message {
+        max-width: 70%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        word-wrap: break-word;
+        position: relative;
+    }
+
+    .sent {
+        align-self: flex-end;
+        background: #2563eb;
+        color: white;
+        border-bottom-right-radius: 3px;
+    }
+
+    .received {
+        align-self: flex-start;
+        background: white;
+        color: #111;
+        border: 1px solid #ddd;
+        border-bottom-left-radius: 3px;
+    }
+
+    .message-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .message-text {
+        flex: 1;
+        white-space: pre-wrap;
+    }
+
+    .delete-button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
+        opacity: 0.8;
+    }
+
+    .delete-button:hover {
+        opacity: 1;
+    }
+
+    .message-time {
+        font-size: 10px;
+        margin-top: 5px;
+        opacity: 0.7;
+        text-align: right;
+    }
+
+    /* =========================================
+       MESSAGE INPUT
+    ========================================= */
+
+    .message-input-area {
+        display: flex;
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #ddd;
+    }
+
+    #messageInput {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        outline: none;
+        font-size: 14px;
+    }
+
+    #sendButton {
+        margin-left: 10px;
+        padding: 12px 20px;
+        border: none;
+        background: #2563eb;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    #sendButton:hover {
+        background: #1d4ed8;
+    }
+
+    /* =========================================
+       ACCOUNT BUTTONS
+    ========================================= */
+
+    .account-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 15px;
+    }
+
+    #logoutButton,
+    #deleteAccountButton {
+        padding: 8px 12px;
+        border: none;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    #logoutButton {
+        background: #dc2626;
+    }
+
+    #logoutButton:hover {
+        background: #b91c1c;
+    }
+
+    #deleteAccountButton {
+        background: #7f1d1d;
+    }
+
+    #deleteAccountButton:hover {
+        background: #450a0a;
+    }
+
+    /* =========================================
+       MOBILE
+    ========================================= */
+
+    @media (max-width: 700px) {
+
+        .users-section {
+            width: 35%;
+        }
+
+        .chat-section {
+            width: 65%;
+        }
+
+        .message {
+            max-width: 85%;
+        }
+
+        .account-buttons {
+            flex-direction: column;
+        }
+
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <!-- =========================================
+         USERS SECTION
+    ========================================= -->
+
+    <div class="users-section">
+
+        <div class="users-header">
+
+            <h2>Chat</h2>
+
+            <p>
+                Welcome,
+                <span id="loggedInUsername"></span>
+            </p>
+
+            <div class="account-buttons">
+
+                <button id="logoutButton">
+                    Logout
+                </button>
+
+                <button id="deleteAccountButton">
+                    Delete Account
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="usersList"></div>
+
+    </div>
+
+
+    <!-- =========================================
+         CHAT SECTION
+    ========================================= -->
+
+    <div class="chat-section">
+
+        <div class="chat-header">
+
+            <h3 id="chatUserName">
+                Select a user
+            </h3>
+
+            <div id="chatUserStatus"></div>
+
+            <div id="typingIndicator"></div>
+
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="message-input-area">
+
+            <input
+                type="text"
+                id="messageInput"
+                placeholder="Type a message..."
+                autocomplete="off"
+            >
+
+            <button id="sendButton">
+                Send
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+
+// =====================================================
+// LOGIN INFORMATION
+// =====================================================
+
+const token =
+    localStorage.getItem("token");
+
+const currentUserId =
+    localStorage.getItem("userId");
+
+const currentUsername =
+    localStorage.getItem("username");
+
+
+// =====================================================
+// CHECK LOGIN
+// =====================================================
+
+if (!token || !currentUserId) {
+
+    alert("Please login first.");
+
+    window.location.href =
+        "index.html";
+
+}
+
+
+// =====================================================
+// CHECK TOKEN / SESSION
+// =====================================================
+
+function handleAuthenticationError(response) {
+
+    if (response.status === 401) {
+
+        alert(
+            "Your session has expired. Please login again."
+        );
+
+        localStorage.removeItem("token");
+
+        localStorage.removeItem("userId");
+
+        localStorage.removeItem("username");
+
+        window.location.href =
+            "index.html";
+
+        return true;
+
+    }
+
+    return false;
+
+}
+
+
+// =====================================================
+// DISPLAY LOGGED-IN USER
+// =====================================================
+
+document.getElementById(
+    "loggedInUsername"
+).textContent = currentUsername;
+
+
+// =====================================================
+// SOCKET CONNECTION
+// =====================================================
+
+const socket =
+    io("http://localhost:5000");
+
+
+// =====================================================
+// VARIABLES
+// =====================================================
+
+let selectedUserId = null;
+
+let selectedUsername = null;
+
+let typingTimer = null;
+
+
+// =====================================================
+// SOCKET CONNECT
+// =====================================================
+
+socket.on("connect", () => {
+
+    console.log(
+        "Connected to Socket.IO:",
+        socket.id
+    );
+
+    socket.emit(
+        "join",
+        currentUserId
+    );
+
+});
+
+
+// =====================================================
+// SOCKET DISCONNECT
+// =====================================================
+
+socket.on("disconnect", () => {
+
+    console.log(
+        "Disconnected from server"
+    );
+
+});
+
+
+// =====================================================
+// LOAD USERS
+// =====================================================
+
+async function loadUsers() {
+
+    try {
+
+        const response =
+            await fetch(
+                "http://localhost:5000/api/users",
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+
+        if (
+            handleAuthenticationError(
+                response
+            )
+        ) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                result.message ||
+                "Unable to load users"
+            );
+
+            return;
+
+        }
+
+
+        displayUsers(
+            result.data
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            "Load users error:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// DISPLAY USERS
+// =====================================================
+
+function displayUsers(users) {
+
+    const usersList =
+        document.getElementById(
+            "usersList"
+        );
+
+    usersList.innerHTML = "";
+
+
+    users.forEach(user => {
+
+        const userItem =
+            document.createElement(
+                "div"
+            );
+
+        userItem.className =
+            "user-item";
+
+        userItem.dataset.userId =
+            user._id;
+
+
+        let statusText = "";
+
+
+        if (user.isOnline) {
+
+            statusText =
+                "🟢 Online";
+
+        } else if (user.lastSeen) {
+
+            const date =
+                new Date(
+                    user.lastSeen
+                );
+
+            const time =
+                date.toLocaleTimeString(
+                    [],
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+            statusText =
+                "Last seen " + time;
+
+        } else {
+
+            statusText =
+                "⚪ Offline";
+
+        }
+
+
+        // =============================================
+        // USER NAME
+        // =============================================
+
+        const userName =
+            document.createElement(
+                "div"
+            );
+
+        userName.className =
+            "user-name";
+
+        userName.textContent =
+            user.username;
+
+
+        // =============================================
+        // USER STATUS
+        // =============================================
+
+        const userStatus =
+            document.createElement(
+                "div"
+            );
+
+        userStatus.className =
+            "user-status " +
+            (
+                user.isOnline
+                    ? "online"
+                    : "offline"
+            );
+
+        userStatus.textContent =
+            statusText;
+
+
+        userItem.appendChild(
+            userName
+        );
+
+        userItem.appendChild(
+            userStatus
+        );
+
+
+        userItem.addEventListener(
+            "click",
+            () => {
+
+                selectUser(
+                    user._id,
+                    user.username
+                );
+
+            }
+        );
+
+
+        usersList.appendChild(
+            userItem
+        );
+
+    });
+
+}
+
+
+// =====================================================
+// SELECT USER
+// =====================================================
+
+async function selectUser(
+    userId,
+    username
+) {
+
+    selectedUserId =
+        userId;
+
+    selectedUsername =
+        username;
+
+
+    document
+        .querySelectorAll(
+            ".user-item"
+        )
+        .forEach(item => {
+
+            item.classList.remove(
+                "active"
+            );
+
+        });
+
+
+    const selectedElement =
+        document.querySelector(
+            `.user-item[data-user-id="${userId}"]`
+        );
+
+
+    if (selectedElement) {
+
+        selectedElement.classList.add(
+            "active"
+        );
+
+    }
+
+
+    document.getElementById(
+        "chatUserName"
+    ).textContent =
+        username;
+
+
+    document.getElementById(
+        "typingIndicator"
+    ).textContent = "";
+
+
+    await loadChatHistory(
+        userId
+    );
+
+
+    await markMessagesAsRead(
+        userId
+    );
+
+}
+
+
+// =====================================================
+// LOAD CHAT HISTORY
+// =====================================================
+
+async function loadChatHistory(
+    userId
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `http://localhost:5000/api/messages/history/${userId}`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+
+        if (
+            handleAuthenticationError(
+                response
+            )
+        ) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                result.message ||
+                "Unable to load chat history"
+            );
+
+            return;
+
+        }
+
+
+        displayMessages(
+            result.data
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            "Chat history error:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// DISPLAY MESSAGES
+// =====================================================
+
+function displayMessages(
+    messages
+) {
+
+    const messagesContainer =
+        document.getElementById(
+            "messages"
+        );
+
+    messagesContainer.innerHTML = "";
+
+
+    messages.forEach(
+        message => {
+
+            addMessageToScreen(
+                message
+            );
+
+        }
+    );
+
+
+    scrollToBottom();
+
+}
+
+
+// =====================================================
+// ADD MESSAGE TO SCREEN
+// =====================================================
+
+function addMessageToScreen(
+    message
+) {
+
+    const messagesContainer =
+        document.getElementById(
+            "messages"
+        );
+
+
+    const messageDiv =
+        document.createElement(
+            "div"
+        );
+
+
+    const isSent =
+        message.sender ===
+        currentUserId;
+
+
+    messageDiv.className =
+        "message " +
+        (
+            isSent
+                ? "sent"
+                : "received"
+        );
+
+
+    messageDiv.dataset.messageId =
+        message._id || "";
+
+
+    const time =
+        message.createdAt
+            ? new Date(
+                message.createdAt
+              ).toLocaleTimeString(
+                [],
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+              )
+            : "";
+
+
+    // =============================================
+    // MESSAGE CONTENT
+    // =============================================
+
+    const messageContent =
+        document.createElement(
+            "div"
+        );
+
+    messageContent.className =
+        "message-content";
+
+
+    // =============================================
+    // MESSAGE TEXT
+    // =============================================
+
+    const messageText =
+        document.createElement(
+            "div"
+        );
+
+    messageText.className =
+        "message-text";
+
+    messageText.textContent =
+        message.message;
+
+
+    messageContent.appendChild(
+        messageText
+    );
+
+
+    // =============================================
+    // DELETE BUTTON
+    // =============================================
+
+    if (
+        isSent &&
+        message._id
+    ) {
+
+        const deleteButton =
+            document.createElement(
+                "button"
+            );
+
+        deleteButton.className =
+            "delete-button";
+
+        deleteButton.type =
+            "button";
+
+        deleteButton.title =
+            "Delete message";
+
+        deleteButton.textContent =
+            "🗑️";
+
+
+        deleteButton.addEventListener(
+            "click",
+            () => {
+
+                deleteMessage(
+                    message._id
+                );
+
+            }
+        );
+
+
+        messageContent.appendChild(
+            deleteButton
+        );
+
+    }
+
+
+    // =============================================
+    // MESSAGE TIME
+    // =============================================
+
+    const messageTime =
+        document.createElement(
+            "div"
+        );
+
+    messageTime.className =
+        "message-time";
+
+    messageTime.textContent =
+        time;
+
+
+    messageDiv.appendChild(
+        messageContent
+    );
+
+    messageDiv.appendChild(
+        messageTime
+    );
+
+
+    messagesContainer.appendChild(
+        messageDiv
+    );
+
+}
+
+
+// =====================================================
+// DELETE MESSAGE
+// =====================================================
+
+async function deleteMessage(
+    messageId
+) {
+
+    const confirmDelete =
+        confirm(
+            "Are you sure you want to delete this message?"
+        );
+
+
+    if (!confirmDelete) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `http://localhost:5000/api/messages/delete/${messageId}`,
+                {
+                    method: "DELETE",
+
+                    headers: {
+
+                        "Authorization":
+                            "Bearer " + token
+
+                    }
+                }
+            );
+
+
+        if (
+            handleAuthenticationError(
+                response
+            )
+        ) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                result.message ||
+                "Unable to delete message"
+            );
+
+            return;
+
+        }
+
+
+        const messageElement =
+            document.querySelector(
+                `[data-message-id="${messageId}"]`
+            );
+
+
+        if (messageElement) {
+
+            messageElement.remove();
+
+        }
+
+
+        socket.emit(
+            "deleteMessage",
+            {
+
+                sender:
+                    currentUserId,
+
+                receiver:
+                    selectedUserId,
+
+                messageId:
+                    messageId
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            "Delete message error:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// RECEIVE MESSAGE DELETED EVENT
+// =====================================================
+
+socket.on(
+    "messageDeleted",
+    data => {
+
+        console.log(
+            "Message deletion received:",
+            data
+        );
+
+
+        const messageElement =
+            document.querySelector(
+                `[data-message-id="${data.messageId}"]`
+            );
+
+
+        if (messageElement) {
+
+            messageElement.remove();
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// MARK MESSAGES AS READ
+// =====================================================
+
+async function markMessagesAsRead(
+    userId
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `http://localhost:5000/api/messages/read/${userId}`,
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+
+        if (
+            handleAuthenticationError(
+                response
+            )
+        ) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        console.log(
+            "Read status:",
+            result
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            "Mark read error:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// SEND MESSAGE
+// =====================================================
+
+async function sendMessage() {
+
+    const input =
+        document.getElementById(
+            "messageInput"
+        );
+
+
+    const message =
+        input.value.trim();
+
+
+    if (!selectedUserId) {
+
+        alert(
+            "Please select a user first."
+        );
+
+        return;
+
+    }
+
+
+    if (!message) {
+
+        return;
+
+    }
+
+
+    if (message.length > 500) {
+
+        alert(
+            "Message cannot exceed 500 characters"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "http://localhost:5000/api/messages/send",
+                {
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        "Authorization":
+                            "Bearer " + token
+
+                    },
+
+                    body: JSON.stringify({
+
+                        receiver:
+                            selectedUserId,
+
+                        message:
+                            message
+
+                    })
+
+                }
+            );
+
+
+        if (
+            handleAuthenticationError(
+                response
+            )
+        ) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                result.message ||
+                "Unable to send message"
+            );
+
+            return;
+
+        }
+
+
+        addMessageToScreen(
+            result.data
+        );
+
+
+        scrollToBottom();
+
+
+        input.value = "";
+
+
+        socket.emit(
+            "sendMessage",
+            {
+
+                sender:
+                    currentUserId,
+
+                receiver:
+                    selectedUserId,
+
+                message:
+                    message,
+
+                messageId:
+                    result.data._id
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            "Send message error:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// SEND BUTTON
+// =====================================================
+
+document.getElementById(
+    "sendButton"
+).addEventListener(
+    "click",
+    sendMessage
+);
+
+
+// =====================================================
+// ENTER KEY
+// =====================================================
+
+document.getElementById(
+    "messageInput"
+).addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Enter"
+        ) {
+
+            event.preventDefault();
+
+            sendMessage();
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// TYPING
+// =====================================================
+
+document.getElementById(
+    "messageInput"
+).addEventListener(
+    "input",
+    () => {
+
+        if (!selectedUserId) {
+
+            return;
+
+        }
+
+
+        socket.emit(
+            "typing",
+            {
+
+                sender:
+                    currentUserId,
+
+                receiver:
+                    selectedUserId,
+
+                username:
+                    currentUsername
+
+            }
+        );
+
+
+        clearTimeout(
+            typingTimer
+        );
+
+
+        typingTimer =
+            setTimeout(
+                () => {
+
+                    socket.emit(
+                        "stopTyping",
+                        {
+
+                            sender:
+                                currentUserId,
+
+                            receiver:
+                                selectedUserId
+
+                        }
+                    );
+
+                },
+                1000
+            );
+
+    }
+);
+
+
+// =====================================================
+// USER TYPING
+// =====================================================
+
+socket.on(
+    "userTyping",
+    data => {
+
+        if (
+            data.sender ===
+            selectedUserId
+        ) {
+
+            document.getElementById(
+                "typingIndicator"
+            ).textContent =
+                data.username +
+                " is typing...";
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// USER STOPPED TYPING
+// =====================================================
+
+socket.on(
+    "userStoppedTyping",
+    data => {
+
+        if (
+            data.sender ===
+            selectedUserId
+        ) {
+
+            document.getElementById(
+                "typingIndicator"
+            ).textContent = "";
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// RECEIVE MESSAGE
+// =====================================================
+
+socket.on(
+    "receiveMessage",
+    data => {
+
+        if (
+            data.sender ===
+            currentUserId
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            selectedUserId ===
+            data.sender
+        ) {
+
+            const newMessage = {
+
+                sender:
+                    data.sender,
+
+                receiver:
+                    currentUserId,
+
+                message:
+                    data.message,
+
+                createdAt:
+                    new Date(),
+
+                _id:
+                    data.messageId || null
+
+            };
+
+
+            addMessageToScreen(
+                newMessage
+            );
+
+
+            scrollToBottom();
+
+
+            markMessagesAsRead(
+                data.sender
+            );
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// UPDATE CHAT USER STATUS
+// =====================================================
+
+function updateChatUserStatus(
+    isOnline,
+    lastSeen
+) {
+
+    const statusElement =
+        document.getElementById(
+            "chatUserStatus"
+        );
+
+
+    if (isOnline) {
+
+        statusElement.textContent =
+            "🟢 Online";
+
+        statusElement.style.color =
+            "green";
+
+    } else {
+
+        if (lastSeen) {
+
+            const date =
+                new Date(
+                    lastSeen
+                );
+
+            const time =
+                date.toLocaleTimeString(
+                    [],
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+            statusElement.textContent =
+                "Last seen " + time;
+
+        } else {
+
+            statusElement.textContent =
+                "⚪ Offline";
+
+        }
+
+        statusElement.style.color =
+            "gray";
+
+    }
+
+}
+
+
+// =====================================================
+// UPDATE USER STATUS
+// =====================================================
+
+function updateUserStatus(
+    userId,
+    isOnline,
+    lastSeen
+) {
+
+    const userElement =
+        document.querySelector(
+            `.user-item[data-user-id="${userId}"]`
+        );
+
+
+    if (!userElement) {
+
+        return;
+
+    }
+
+
+    const statusElement =
+        userElement.querySelector(
+            ".user-status"
+        );
+
+
+    if (!statusElement) {
+
+        return;
+
+    }
+
+
+    if (isOnline) {
+
+        statusElement.textContent =
+            "🟢 Online";
+
+        statusElement.style.color =
+            "green";
+
+    } else {
+
+        if (lastSeen) {
+
+            const date =
+                new Date(
+                    lastSeen
+                );
+
+            const time =
+                date.toLocaleTimeString(
+                    [],
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+            statusElement.textContent =
+                "Last seen " + time;
+
+        } else {
+
+            statusElement.textContent =
+                "⚪ Offline";
+
+        }
+
+        statusElement.style.color =
+            "gray";
+
+    }
+
+
+    if (
+        userId ===
+        selectedUserId
+    ) {
+
+        updateChatUserStatus(
+            isOnline,
+            lastSeen
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// USER STATUS CHANGED
+// =====================================================
+
+socket.on(
+    "userStatusChanged",
+    data => {
+
+        updateUserStatus(
+            data.userId,
+            data.isOnline,
+            data.lastSeen
+        );
+
+    }
+);
+
+
+// =====================================================
+// REAL-TIME ACCOUNT DELETED
+// =====================================================
+
+socket.on(
+    "userAccountDeleted",
+    data => {
+
+        console.log(
+            "User account deleted:",
+            data
+        );
+
+
+        const deletedUserId =
+            data.userId;
+
+
+        // =============================================
+        // FIND DELETED USER IN SIDEBAR
+        // =============================================
+
+        const deletedUserElement =
+            document.querySelector(
+                `.user-item[data-user-id="${deletedUserId}"]`
+            );
+
+
+        // =============================================
+        // REMOVE USER FROM SIDEBAR
+        // =============================================
+
+        if (deletedUserElement) {
+
+            deletedUserElement.remove();
+
+        }
+
+
+        // =============================================
+        // IF DELETED USER WAS CURRENT CHAT
+        // =============================================
+
+        if (
+            selectedUserId ===
+            deletedUserId
+        ) {
+
+            selectedUserId =
+                null;
+
+            selectedUsername =
+                null;
+
+
+            document.getElementById(
+                "chatUserName"
+            ).textContent =
+                "Select a user";
+
+
+            document.getElementById(
+                "chatUserStatus"
+            ).textContent =
+                "";
+
+
+            document.getElementById(
+                "typingIndicator"
+            ).textContent =
+                "";
+
+
+            document.getElementById(
+                "messages"
+            ).innerHTML =
+                "";
+
+
+            document.getElementById(
+                "messageInput"
+            ).value =
+                "";
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+document.getElementById(
+    "logoutButton"
+).addEventListener(
+    "click",
+    () => {
+
+        localStorage.removeItem(
+            "token"
+        );
+
+        localStorage.removeItem(
+            "userId"
+        );
+
+        localStorage.removeItem(
+            "username"
+        );
+
+
+        socket.disconnect();
+
+
+        window.location.href =
+            "index.html";
+
+    }
+);
+
+
+// =====================================================
+// DELETE ACCOUNT
+// =====================================================
+
+document.getElementById(
+    "deleteAccountButton"
+).addEventListener(
+    "click",
+    async () => {
+
+        const confirmed =
+            confirm(
+                "Are you sure you want to permanently delete your account? All your messages will also be deleted."
+            );
+
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/auth/delete-account",
+                    {
+                        method: "DELETE",
+
+                        headers: {
+
+                            "Authorization":
+                                "Bearer " + token
+
+                        }
+                    }
+                );
+
+
+            if (
+                handleAuthenticationError(
+                    response
+                )
+            ) {
+                return;
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    result.message ||
+                    "Unable to delete account"
+                );
+
+                return;
+
+            }
+
+
+            alert(
+                "Your account has been deleted successfully."
+            );
+
+
+            localStorage.removeItem(
+                "token"
+            );
+
+            localStorage.removeItem(
+                "userId"
+            );
+
+            localStorage.removeItem(
+                "username"
+            );
+
+
+            socket.disconnect();
+
+
+            window.location.href =
+                "index.html";
+
+
+        } catch (error) {
+
+            console.log(
+                "Delete account error:",
+                error
+            );
+
+
+            alert(
+                "Something went wrong while deleting your account."
+            );
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// SCROLL TO BOTTOM
+// =====================================================
+
+function scrollToBottom() {
+
+    const messagesContainer =
+        document.getElementById(
+            "messages"
+        );
+
+
+    messagesContainer.scrollTop =
+        messagesContainer.scrollHeight;
+
+}
+
+
+// =====================================================
+// LOAD USERS
+// =====================================================
+
+loadUsers();
+
+</script>
+
+
+<!-- =====================================================
+     NOTIFICATIONS
+====================================================== -->
+
+<script src="notifications.js"></script>
+
+</body>
+
+</html>
